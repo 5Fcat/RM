@@ -21,6 +21,7 @@ p.add_argument("--fps", type=int, default=30)
 p.add_argument("--w", type=int, default=1280)
 p.add_argument("--h", type=int, default=720)
 p.add_argument("--title", default="")
+p.add_argument("--dist", type=float, default=2.2, help="camera distance [m]")
 p.add_argument("--frames", default="", help="comma list of sim times [s] to save as png instead of a video")
 a = p.parse_args()
 
@@ -58,7 +59,7 @@ d = mujoco.MjData(m)
 r = mujoco.Renderer(m, a.h, a.w)
 cam = mujoco.MjvCamera()
 cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-cam.azimuth, cam.elevation, cam.distance = -112.0, -20.0, 2.2
+cam.azimuth, cam.elevation, cam.distance = -112.0, -20.0, a.dist
 opt = mujoco.MjvOption()
 
 x0 = qpos[0, 0]

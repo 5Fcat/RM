@@ -36,7 +36,7 @@ def system_prompt(task: str, terrain: str, max_modules: int, n: int = 16) -> str
     if terrain != "flat":
         common += f"### TERRAIN ###\n{TERRAIN[terrain]}\n\n"
     body = (PROMPT_DIR / f"{task}.txt").read_text(encoding="utf-8")
-    return (common + body).replace("{max_modules}", str(max_modules)).replace("{name}", NAMES[terrain]) \
+    return (common + body).replace("{max_modules}", str(max_modules)).replace("{name}", NAMES[terrain] if terrain in NAMES else NAME[terrain]) \
         .replace("{n}", str(n))
 
 

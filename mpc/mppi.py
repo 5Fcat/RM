@@ -32,6 +32,8 @@ import mujoco
 import numpy as np
 from mujoco import rollout as mj_rollout
 
+from mpc import terrain_ext
+
 
 # ----------------------------------------------------------------------------------------------
 # Terrain (identical geometry to robomorph train/envs/*.py)
@@ -45,6 +47,14 @@ def apply_terrain(xml_string: str, terrain: str, scale: float = 1.0) -> str:
     the robot, sets the contact friction."""
     if terrain == "flat":
         return xml_string
+    ext = terrain_ext.parse(terrain)            # 11-13 extended terrains (name carries the difficulty)
+    if ext is not None:
+        if scale != 1.0:
+            raise ValueError(f"{terrain}: the difficulty is in the name; use terrain_scale 1.0")
+        kind, v = ext
+        if kind == "beams":
+            return apply_terrain(xml_string, kind, v)
+        return terrain_ext.add_terrain(xml_string, terrain)
     root = ET.fromstring(xml_string)
     worldbody = root.find(".//worldbody")
     floors = root.findall(".//geom[@type='plane']")
@@ -175,6 +185,7 @@ class MPPIEvaluator:
         self.datas = [mujoco.MjData(model) for _ in range(max(1, cfg.threads))]
         self.pool = ThreadPoolExecutor(max_workers=cfg.threads) if cfg.threads > 1 else None
         self.physics_steps = 0
+        self.ground = None   # g(x, y) of the walking surface (mpc/terrain_ext.py); None = z = 0 floor
 
     # ---- helpers ------------------------------------------------------------------------------
     def scale(self, a: np.ndarray) -> np.ndarray:
@@ -189,6 +200,8 @@ class MPPIEvaluator:
         RoboMorph: torso z outside healthy_z. Hyblock: the torso (root module A) touches the ground
         (its lowest box corner below torso_touch) or is upside down (its local +y axis points down)."""
         z = qpos_free[..., 2]
+        if self.ground is not None:          # height above the terrain surface under the torso origin
+            z = z - self.ground(qpos_free[..., 0], qpos_free[..., 1])
         if not self.hyblock:
             return (z < self.cfg.healthy_z[0]) | (z > self.cfg.healthy_z[1])
         w, x, y, zq = (qpos_free[..., k] for k in range(3, 7))
@@ -356,6 +369,7 @@ def evaluate_design(xml_string: str, terrain: str = "flat", episodes: int = 1, s
     """Score one design: mean MPC episode score (same scale as RoboMorph SAC fitness)."""
     model = load_model(xml_string, terrain, cfg.mjx_solver, cfg.terrain_scale, cfg.min_solver_iterations)
     ev = MPPIEvaluator(model, cfg, seed=seed)
+    ev.ground = terrain_ext.ground_height(terrain)
     try:
         eps = [ev.run_episode(seed=seed * 1000 + i, verbose=verbose) for i in range(episodes)]
     finally:
