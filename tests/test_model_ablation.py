@@ -71,3 +71,50 @@ class TestModelAblation(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAblationCost(unittest.TestCase):
+    """分批的费用上限（11-22）：只数真正调用 API 的行；B6′ 的第 0–4 代是复制来的，不算。"""
+
+    def _csv(self, path: Path, fields, rows):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
+
+    def test_cost(self):
+        from hyblock import ablation_cost as AC
+        mut = ["gen", "idx", "llm_in", "llm_out", "cached"]
+        sel = ["gen", "vote", "llm_in", "llm_out", "cached"]
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            # 前缀：2 次调用（各 1000 / 100）+ 1 次缓存（不算）
+            self._csv(root / "ga_llmtyped_pre_sonnet_s500" / "llm_mut.csv", mut, [
+                dict(gen=1, idx=0, llm_in=1000, llm_out=100, cached="False"),
+                dict(gen=4, idx=0, llm_in=1000, llm_out=100, cached="False"),
+                dict(gen=4, idx=1, llm_in=1000, llm_out=100, cached="True")])
+            # B6′：第 4 代是复制来的（不算），第 5 代 1 次调用；② 1 次调用；空 token 的行不算
+            self._csv(root / "ga_llmtyped_sel_llmEv_sonnet_s500" / "llm_mut.csv", mut, [
+                dict(gen=4, idx=0, llm_in=1000, llm_out=100, cached="False"),
+                dict(gen=5, idx=0, llm_in=2000, llm_out=200, cached="False"),
+                dict(gen=6, idx=0, llm_in="", llm_out="", cached="")])
+            self._csv(root / "ga_llmtyped_sel_llmEv_sonnet_s500" / "select.csv", sel, [
+                dict(gen=5, vote=0, llm_in=5000, llm_out=500, cached="False")])
+            self.assertEqual(AC.seed_tokens(root, "sonnet", 500), (9000, 900, 4))
+            total, rows = AC.cost(root, "sonnet", AC.PRICES["claude-sonnet-5-5"])
+            self.assertAlmostEqual(total, 9000 * 2e-6 + 900 * 10e-6)      # 0.027
+            self.assertEqual([r[0] for r in rows], [500])
+            args = ["--root", t, "--tag", "sonnet", "--model", "claude-sonnet-5-5"]
+            self.assertEqual(AC.main(args + ["--max", "1"]), 0)
+            self.assertEqual(AC.main(args + ["--max", "0.02"]), 3)
+            self.assertEqual(AC.main(["--root", t, "--tag", "x", "--model", "unknown-model"]), 2)
+
+    def test_batch_file(self):
+        p = Path(__file__).resolve().parents[1] / "wj_tools" / "model_ablation_batch.txt"
+        kv = dict(l.split("=", 1) for l in p.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#"))
+        seeds = [int(x) for x in kv["SEEDS"].split()]
+        self.assertTrue(seeds)
+        self.assertTrue(all(500 <= s <= 509 for s in seeds))
+        self.assertEqual(len(seeds), len(set(seeds)))
+        self.assertGreater(float(kv["MAX_USD"]), 0)
