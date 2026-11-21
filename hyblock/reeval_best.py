@@ -38,6 +38,12 @@ PAIRS = {
     "p14": [("ga_llmtyped", "ga", "A4 − A1"), ("ga_llmtyped_sel_llmEv", "ga", "A5 − A1")],
     "m15": [("ga_llmtyped", "ga", "A4 − A1"), ("ga_llmtyped_sel_llmEv", "ga", "A5 − A1")],
     "v370": [("ga_llmtyped", "ga", "A4 − A1"), ("ga_llmtyped_sel_llmEv", "ga", "A5 − A1")],
+    # 11-21 补充实验 B2（claude/补充实验B_2026-11-21.md）：H6 与地形扩展
+    "confirm_beams": [("ga_llmtyped_sel_llmEv", "ga", "B6 − B1 组合 − GA（H6）"), ("ga_llmtyped", "ga", "B5 − B1 LLM 变异 − GA"),
+                      ("ga_llmtyped_sel_llmEv", "ga_llmtyped", "B6 − B5 ② 在 LLM 变异之上")],
+    "ridged_s0.75": [("ga_llmtyped_sel_llmEv", "ga", "B6 − B1")],
+    "slope_5": [("ga_llmtyped_sel_llmEv", "ga", "B6 − B1")],
+    "beams_s1.1": [("ga_llmtyped_sel_llmEv", "ga", "B6 − B1")],
 }
 PHYS = ("pressure", "mass_scale", "max_speed_deg")
 DEFAULT = {"pressure": 8.0, "mass_scale": 1.0}       # 与 search.physics_kw 相同：默认值不传
@@ -59,7 +65,7 @@ def targets(roots: list[Path]) -> list[dict]:
     for root in roots:
         for d in sorted(p for p in root.iterdir() if p.is_dir() and (p / "DONE").exists()):
             m = re.match(r"^(.*)_s(\d+)$", d.name)
-            if not m:
+            if not m or m.group(1).endswith("_pre"):          # 地形扩展的 B5 前缀（只供 B6 复制）不重评
                 continue
             a, r = run_args(d), best_row(d)
             phys = {k: a[k] for k in PHYS if a.get(k) is not None and a.get(k) != DEFAULT.get(k)}
