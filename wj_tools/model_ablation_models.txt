@@ -1,3 +1,5 @@
-# 换模型消融（claude/正式实验计划.md 变更记录第 23 条）要跑的模型：每行"标签 模型 ID"。分步骤加，已跑完的运行不会重跑
+# 换模型消融（claude/正式实验计划.md 变更记录第 23 条）要跑的模型：每行"标签 模型 ID"。分步骤加，已跑完的运行不会重跑；按这里的顺序跑
 # 第 1 步（11-21）：Sonnet 5.5
 sonnet claude-sonnet-5-5
+# 第 2 步（11-22，WJ：Opus 提前到 DeepSeek 之前，用本月的 Claude 额度）：Opus 5.5
+opus claude-opus-5-5

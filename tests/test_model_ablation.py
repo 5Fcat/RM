@@ -113,8 +113,19 @@ class TestAblationCost(unittest.TestCase):
     def test_batch_file(self):
         p = Path(__file__).resolve().parents[1] / "wj_tools" / "model_ablation_batch.txt"
         kv = dict(l.split("=", 1) for l in p.read_text(encoding="utf-8").splitlines() if l and not l.startswith("#"))
-        seeds = [int(x) for x in kv["SEEDS"].split()]
-        self.assertTrue(seeds)
-        self.assertTrue(all(500 <= s <= 509 for s in seeds))
-        self.assertEqual(len(seeds), len(set(seeds)))
-        self.assertGreater(float(kv["MAX_USD"]), 0)
+        from hyblock import ablation_cost as AC
+        m = Path(__file__).resolve().parents[1] / "wj_tools" / "model_ablation_models.txt"
+        models = dict(l.split() for l in m.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#"))
+        for k, v in kv.items():
+            key, _, tag = k.partition("_") if k.startswith("SEEDS") else (k[:7], "_", k[8:])
+            self.assertIn(key, ("SEEDS", "MAX_USD"), k)
+            if tag:
+                self.assertIn(tag, models, k)                     # 标签必须在模型列表里
+                self.assertIn(models[tag], AC.PRICES, k)          # 有上限的模型必须知道单价
+            if key == "SEEDS":
+                seeds = [int(x) for x in v.split()]
+                self.assertTrue(seeds)
+                self.assertTrue(all(500 <= s <= 509 for s in seeds))
+                self.assertEqual(len(seeds), len(set(seeds)))
+            else:
+                self.assertGreater(float(v), 0)

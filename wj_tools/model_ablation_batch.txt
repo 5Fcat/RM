@@ -1,5 +1,9 @@
-# 换模型消融（正式实验计划变更记录第 23 条）的分批设置。model_ablation_mac.sh 开头读这个文件（只读 KEY=值 两种行）
-# SEEDS：这一批跑哪些种子（按顺序）；MAX_USD：这一批里每个模型的 API 费用估算（hyblock/ablation_cost.py）到了这个数就不再开始新的运行
-# 11-22（WJ）：Claude 的 API 额度本月只剩约 $65 → Sonnet 第 1 批 = 种子 500–503，余下 504–509 在 12 月跑（第 2 批时改这两行）
-SEEDS=500 501 502 503
-MAX_USD=55
+# 换模型消融（正式实验计划变更记录第 23 条）的分批设置。model_ablation_mac.sh 开头读这个文件（只读 KEY=值 / KEY_<标签>=值 的行）
+# SEEDS_<标签>：这一批这个模型跑哪些种子（按顺序）；MAX_USD_<标签>：这个模型全部种子累计的 API 费用估算（hyblock/ablation_cost.py，
+#   按 token × 单价，不算提示缓存折扣，偏保守）到了这个数就不再开始它的新运行。没有 _<标签> 的 SEEDS / MAX_USD 作默认
+# 11-22 04:2x（WJ）：Claude 额度本月剩约 $65 → Sonnet 第 1 批 = 种子 500–503（已完成，估算 $14.75，Console 实际 < $10）
+# 11-22 12:2x（WJ）：实测便宜 → Sonnet 第 2 批 504–509 提前到 11 月；之后 Opus 第 1 批 500–504（上限 $35）
+SEEDS_sonnet=504 505 506 507 508 509
+MAX_USD_sonnet=45
+SEEDS_opus=500 501 502 503 504
+MAX_USD_opus=35
